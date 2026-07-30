@@ -1,22 +1,19 @@
-import logging
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+import telebot
+import time
 from config import TOKEN
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+bot = telebot.TeleBot(TOKEN)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🛡️ STAR BOT يعمل بنجاح!")
-
-def main():
-    app = ApplicationBuilder().token(TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    
-    print("STAR BOT is running...")
-    app.run_polling()
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    bot.reply_to(message, "🛡️ STAR BOT يعمل بنجاح وبأعلى استقرار!")
 
 if __name__ == '__main__':
-    main()
+    print("STAR BOT is starting...")
+    while True:
+        try:
+            bot.polling(non_stop=True, interval=0, timeout=20)
+        except Exception as e:
+            print(f"Error encountered: {e}")
+            time.sleep(3)
+    
