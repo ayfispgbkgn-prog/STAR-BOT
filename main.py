@@ -5,6 +5,13 @@ from config import TOKEN
 
 bot = telebot.TeleBot(TOKEN)
 
+# التأكد من حذف أي ويب هوك قديم قد يعيق الرد
+try:
+    bot.remove_webhook()
+    print("Webhook removed successfully. Starting polling...")
+except Exception as e:
+    print(f"Error removing webhook: {e}")
+
 def is_admin(chat_id, user_id):
     try:
         member = bot.get_chat_member(chat_id, user_id)
@@ -30,8 +37,11 @@ def send_welcome(message):
 
     markup = InlineKeyboardMarkup(row_width=2)
     
-    bot_info = bot.get_me()
-    add_to_group_url = f"https://t.me/{bot_info.username}?startgroup=true"
+    try:
+        bot_info = bot.get_me()
+        add_to_group_url = f"https://t.me/{bot_info.username}?startgroup=true"
+    except:
+        add_to_group_url = "https://t.me/"
 
     btn_add = InlineKeyboardButton("➕ أضف البوت لمجموعتك", url=add_to_group_url)
     btn_commands = InlineKeyboardButton("📜 قائمة الأوامر", callback_data="show_commands")
@@ -57,11 +67,13 @@ def callback_listener(call):
     elif call.data == "show_dev":
         bot.answer_callback_query(call.id, text="المطور: STAR 🌟", show_alert=True)
 
+# تشغيل البوت مع تخطي الرسائل القديمة المتراكمة
 if __name__ == '__main__':
-    print("STAR BOT is running...")
+    print("STAR BOT is active and listening...")
     while True:
         try:
-            bot.polling(non_stop=True, interval=0, timeout=20)
+            bot.polling(non_stop=True, interval=1, timeout=30, skip_pending=True)
         except Exception as e:
-            time.sleep(3)
+            print(f"Polling error: {e}")
+            time.sleep(5)
             
