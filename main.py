@@ -137,9 +137,3 @@ if name == 'main':
         except Exception as e:
             print(f"Polling error: {e}")
             time.sleep(5)
-Open your script in Pydroid 3
-Tap the Run (▶️) button
-Look at the console/output panel at the bottom — it'll show either:
-STAR BOT is active... (meaning it started fine)
-A red error/traceback (meaning it crashed on startup)
-Nothing at all (meaning it might be stuck or Pydroid lost the process)
