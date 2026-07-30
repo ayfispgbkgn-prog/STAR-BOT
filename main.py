@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
@@ -13,24 +12,18 @@ logging.basicConfig(
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🛡️ STAR BOT يعمل بنجاح!")
 
-async def main():
+def main():
     # بناء التطبيق
     app = ApplicationBuilder().token(TOKEN).build()
+    
+    # إضافة الأوامر
     app.add_handler(CommandHandler("start", start))
     
     print("STAR BOT is running...")
     
-    # تشغيل الـ Polling بطريقة يدويّة تتفادى مشكلة Event Loop في Render
-    await app.initialize()
-    await app.start()
-    await app.updater.start_polling()
-    
-    # إبقاء البوت متصلاً
-    await asyncio.Event().wait()
+    # تشغيل البوت بالطريقة الرسمية والمستقرة
+    app.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
-    try:
-        asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
-        pass
+    main()
     
