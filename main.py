@@ -1,3 +1,4 @@
+ℕ | I ʟυͷσ‌‎xᴀ:
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions
 import time
@@ -67,19 +68,16 @@ def callback_listener(call):
 # ----------------- أمر الكتم المحدث -----------------
 @bot.message_handler(commands=['mute'])
 def mute_user(message):
-    # التأكد من كتابة الأمر بالرد
     if not message.reply_to_message:
         bot.reply_to(message, "⚠️ قم بالرد على رسالة العضو الذي تريد كتمه.")
         return
 
-    # التأكد أن الذي أرسل الأمر هو أدمن
     if not is_admin(message.chat.id, message.from_user.id):
         bot.reply_to(message, "❌ هذا الأمر مخصص للمشرفين فقط!")
         return
 
     target_user = message.reply_to_message.from_user
 
-    # التأكد من عدم كتم أدمن آخر
     if is_admin(message.chat.id, target_user.id):
         bot.reply_to(message, "⚠️ لا يمكنك كتم مشرف أو مالك المجموعة!")
         return
@@ -91,7 +89,7 @@ def mute_user(message):
             can_send_other_messages=False,
             can_add_web_page_previews=False
         )
-        
+
         bot.restrict_chat_member(
             chat_id=message.chat.id,
             user_id=target_user.id,
@@ -100,7 +98,7 @@ def mute_user(message):
         bot.reply_to(message, f"🚫 تم كتم العضو <b>{target_user.first_name}</b> بنجاح.", parse_mode="HTML")
 
     except Exception as e:
-        bot.reply_to(message, f"❌ حدث خطأ عند الكتم:\n<code>{e}</code>\n\n💡 *تأكد أن المجموعة خارقة (Supergroup) وأن البوت يمتلك صلاحية حظر المستخدمين.*", parse_mode="HTML")
+        bot.reply_to(message, f"❌ حدث خطأ عند الكتم:\n<code>{e}</code>\n\n💡 تأكد أن المجموعة خارقة (Supergroup) وأن البوت يمتلك صلاحية حظر المستخدمين.", parse_mode="HTML")
 
 # ----------------- أمر فك الكتم -----------------
 @bot.message_handler(commands=['unmute'])
@@ -109,7 +107,7 @@ def unmute_user(message):
         bot.reply_to(message, "⚠️ قم بالرد على رسالة العضو المراد فك كتمه.")
         return
 
-    if not is_admin(message.chat.id, message.from_user.id):
+if not is_admin(message.chat.id, message.from_user.id):
         bot.reply_to(message, "❌ هذا الأمر مخصص للمشرفين فقط!")
         return
 
@@ -132,7 +130,7 @@ def unmute_user(message):
         bot.reply_to(message, f"❌ حدث خطأ: <code>{e}</code>", parse_mode="HTML")
 
 # ----------------- تشغيل البوت -----------------
-if __name__ == '__main__':
+if name == 'main':
     print("STAR BOT is active...")
     while True:
         try:
@@ -140,4 +138,3 @@ if __name__ == '__main__':
         except Exception as e:
             print(f"Polling error: {e}")
             time.sleep(5)
-    
