@@ -1,4 +1,3 @@
-ℕ | I ʟυͷσ‌‎xᴀ:
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions
 import time
