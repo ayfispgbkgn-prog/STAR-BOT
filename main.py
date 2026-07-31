@@ -160,7 +160,38 @@ def unmute_user(message):
     except Exception as e:
         bot.reply_to(message, f"❌ حدث خطأ: <code>{e}</code>", parse_mode="HTML")
 
-if __name__ == '__main__':
+if __name__ == '__main__':@bot.message_handler(commands=['kick'])
+def kick_user(message):
+    if message.chat.type not in ['group', 'supergroup']:
+        bot.reply_to(message, "⚠️ هذا الأمر يعمل داخل المجموعات فقط!")
+        return
+
+    if not is_admin(message.chat.id, message.from_user.id):
+        bot.reply_to(message, "❌ هذا الأمر للمشرفين فقط!")
+        return
+
+    if not message.reply_to_message:
+        bot.reply_to(message, "⚠️ قم بالرد على رسالة العضو الذي تريد طرده.")
+        return
+
+    target = message.reply_to_message.from_user
+
+    if is_admin(message.chat.id, target.id):
+        bot.reply_to(message, "⚠️ لا يمكن طرد مشرف أو مالك المجموعة.")
+        return
+
+    try:
+        bot.ban_chat_member(message.chat.id, target.id)
+        bot.unban_chat_member(message.chat.id, target.id)
+
+        bot.reply_to(
+            message,
+            f"👢 تم طرد <b>{target.first_name}</b> من المجموعة.",
+            parse_mode="HTML"
+        )
+
+    except Exception as e:
+        bot.reply_to(message, f"❌ حدث خطأ:\n<code>{e}</code>", parse_mode="HTML")
     print("STAR BOT is active...")
     while True:
         try:
