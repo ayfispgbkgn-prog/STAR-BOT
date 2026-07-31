@@ -1,35 +1,9 @@
 import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions
 import time
-import json
-import os
-
 from config import TOKEN
-from telebot.types import (
-    InlineKeyboardMarkup,
-    InlineKeyboardButton,
-    ChatPermissions
-)
-bot = telebot.TeleBot(TOKEN) # ==========================
-# STAR BOT DATABASE
-# ==========================
 
-DATA_FILE = "data/settings.json"
-
-def load_data():
-    if not os.path.exists(DATA_FILE):
-        return {}
-
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        try:
-            return json.load(f)
-        except:
-            return {}
-
-def save_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-
-database = load_data()
+bot = telebot.TeleBot(TOKEN)
 
 try:
     bot.remove_webhook()
@@ -160,44 +134,11 @@ def unmute_user(message):
     except Exception as e:
         bot.reply_to(message, f"❌ حدث خطأ: <code>{e}</code>", parse_mode="HTML")
 
-@bot.message_handler(commands=['kick'])
-def kick_user(message):
-    if message.chat.type not in ['group', 'supergroup']:
-        bot.reply_to(message, "⚠️ هذا الأمر يعمل داخل المجموعات فقط!")
-        return
-
-    if not is_admin(message.chat.id, message.from_user.id):
-        bot.reply_to(message, "❌ هذا الأمر للمشرفين فقط!")
-        return
-
-    if not message.reply_to_message:
-        bot.reply_to(message, "⚠️ قم بالرد على رسالة العضو الذي تريد طرده.")
-        return
-
-    target = message.reply_to_message.from_user
-
-    if is_admin(message.chat.id, target.id):
-        bot.reply_to(message, "⚠️ لا يمكن طرد مشرف أو مالك المجموعة.")
-        return
-
-    try:
-        bot.ban_chat_member(message.chat.id, target.id)
-        bot.unban_chat_member(message.chat.id, target.id)
-
-        bot.reply_to(
-            message,
-            f"👢 تم طرد <b>{target.first_name}</b> من المجموعة.",
-            parse_mode="HTML"
-        )
-
-    except Exception as e:
-        bot.reply_to(message, f"❌ حدث خطأ:\n<code>{e}</code>", parse_mode="HTML")
-
-
 if __name__ == '__main__':
     print("STAR BOT is active...")
     while True:
         try:
             bot.polling(non_stop=True, interval=1, timeout=30, skip_pending=True)
-        except Exception:
+        except Exception as e:
             time.sleep(5)
+                     
