@@ -79,7 +79,7 @@ def callback_listener(call):
     elif call.data == "show_dev":
         bot.answer_callback_query(call.id, text="المطور: STAR 🌟", show_alert=True)
 # ==========================================
-# 2️⃣ نظام تحميل الأغاني المطور (/يوت)
+# 2️⃣ نظام تحميل الأغاني السريع والمستقر (/يوت)
 # ==========================================
 
 @bot.message_handler(commands=['يوت', 'yt', 'play'])
@@ -90,30 +90,26 @@ def search_and_send_audio(message):
         return
 
     query = args[1]
-    wait_msg = bot.reply_to(message, f"🔍 <b>جاري البحث عن:</b> <i>{query}</i> ...", parse_mode="HTML")
+    wait_msg = bot.reply_to(message, f"⚡ <b>جاري البحث والسحب السريع:</b> <i>{query}</i> ...", parse_mode="HTML")
 
-    # إعدادات متقدمة لتجاوز حظر سيرفرات يوتيوب
+    # إعدادات خفيفة ومستقرة للحد من استهلاك سيرفر Render
     ydl_opts = {
-        'format': 'bestaudio/best',
+        'format': 'ba/ba*', # اختيار أسرع صيغة صوت متاحة بدون إعادة ترميز
         'outtmpl': '%(id)s.%(ext)s',
         'quiet': True,
         'no_warnings': True,
         'default_search': 'ytsearch1',
         'nocheckcertificate': True,
         'geo_bypass': True,
-        'source_address': '0.0.0.0',
-        'headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        }
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # البحث أولاً من يوتيوب، وفي حال الحظر يتحول تلقائياً للبحث العام
+            # تجربة يوتيوب أولاً ثم SoundCloud تلقائياً
             try:
                 info = ydl.extract_info(f"ytsearch1:{query}", download=True)
             except Exception:
-                info = ydl.extract_info(f"scsearch1:{query}", download=True) # SoundCloud البديل
+                info = ydl.extract_info(f"scsearch1:{query}", download=True)
 
             if 'entries' in info and len(info['entries']) > 0:
                 video_info = info['entries'][0]
@@ -127,7 +123,7 @@ def search_and_send_audio(message):
             filename = f"{file_id}.{ext}"
 
         if os.path.exists(filename):
-            bot.edit_message_text("🚀 <b>جاري رفع الصوت إلى تيليجرام...</b>", chat_id=message.chat.id, message_id=wait_msg.message_id, parse_mode="HTML")
+            bot.edit_message_text("🚀 <b>جاري إرسال الملف...</b>", chat_id=message.chat.id, message_id=wait_msg.message_id, parse_mode="HTML")
             
             with open(filename, 'rb') as audio:
                 bot.send_audio(
@@ -139,15 +135,23 @@ def search_and_send_audio(message):
                     reply_to_message_id=message.message_id
                 )
             
+            # حذف فوري للحد من استهلاك القرص
             os.remove(filename)
             bot.delete_message(chat_id=message.chat.id, message_id=wait_msg.message_id)
         else:
-            bot.edit_message_text("❌ تعذر العثور على الملف الصوتي، حاول مرة أخرى.", chat_id=message.chat.id, message_id=wait_msg.message_id)
+            bot.edit_message_text("❌ تعذر تحميل هذا المقطع تحديداً، جرب إضافة اسم الفنان بدقة.", chat_id=message.chat.id, message_id=wait_msg.message_id)
 
     except Exception as e:
         print(f"Music Error: {e}")
-        bot.edit_message_text(f"❌ تعذر تنزيل الأغنية حالياً من المصدر، جرب اسم أغنية آخر أو أدخل اسمها بالكامل.", chat_id=message.chat.id, message_id=wait_msg.message_id, parse_mode="HTML")
-        
+        bot.edit_message_text("❌ <b>تعذر تنزيل الأغنية المطلوبة.</b>\n💡 <i>نصيحة: اكتب اسم الأغنية مع اسم المطرب بدقة لتسهيل العثور عليها.</i>", chat_id=message.chat.id, message_id=wait_msg.message_id, parse_mode="HTML")
+        # تنظيف أي ملفات عالقة
+        for file in os.listdir('.'):
+            if file.endswith(('.m4a', '.webm', '.mp3')):
+                try:
+                    os.remove(file)
+                except Exception:
+                    pass
+                    
 
 # ==========================================
 # 3️⃣ أوامر الحماية والإدارة (Moderation)
