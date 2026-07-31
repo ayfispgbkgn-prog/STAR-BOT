@@ -160,7 +160,7 @@ def unmute_user(message):
     except Exception as e:
         bot.reply_to(message, f"❌ حدث خطأ: <code>{e}</code>", parse_mode="HTML")
 
-if __name__ == '__main__':@bot.message_handler(commands=['kick'])
+@bot.message_handler(commands=['kick'])
 def kick_user(message):
     if message.chat.type not in ['group', 'supergroup']:
         bot.reply_to(message, "⚠️ هذا الأمر يعمل داخل المجموعات فقط!")
@@ -192,10 +192,12 @@ def kick_user(message):
 
     except Exception as e:
         bot.reply_to(message, f"❌ حدث خطأ:\n<code>{e}</code>", parse_mode="HTML")
+
+
+if __name__ == '__main__':
     print("STAR BOT is active...")
     while True:
         try:
             bot.polling(non_stop=True, interval=1, timeout=30, skip_pending=True)
-        except Exception as e:
+        except Exception:
             time.sleep(5)
-            
