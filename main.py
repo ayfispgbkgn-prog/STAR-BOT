@@ -1,12 +1,14 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions
 import time
+import os
+import yt_dlp
 from config import TOKEN
 
 # إنشاء كائن البوت
 bot = telebot.TeleBot(TOKEN)
 
-# تنظيف الـ Webhook عند بدء التشغيل لمنع التعارض مع Render
+# تنظيف الـ Webhook عند بدء التشغيل
 try:
     bot.remove_webhook()
     print("STAR BOT: Webhook cleaned successfully.")
@@ -30,12 +32,12 @@ def send_welcome(message):
     user_name = message.from_user.first_name
     caption = (
         f"⚡ <b>أهلاً بك يا {user_name} في بوت STAR!</b>\n\n"
-        f"🛡️ <b>STAR BOT</b> هو النظام الأقوى لإدارة وحماية المجموعات وتصميم الخدمات.\n"
+        f"🛡️ <b>STAR BOT</b> هو النظام الأقوى لإدارة وحماية المجموعات وتحميل الصوتيات.\n"
         f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"⚙️ <b>المميزات المتاحة حالياً:</b>\n"
+        f"⚙️ <b>المميزات المتاحة:</b>\n"
         f"└ 🚷 <b>أوامر الكتم والحظر والإبعاد</b>\n"
         f"└ 📌 <b>تثبيت الرسائل وإدارتها</b>\n"
-        f"└ 🎵 <b>نظام البحث الصوتي الموسيقي (قريباً)</b>\n"
+        f"└ 🎵 <b>تحميل الأغاني من يوتيوب عبر <code>/يوت</code></b>\n"
         f"━━━━━━━━━━━━━━━━━━━━━━\n"
         f"👇 <b>قم بإضافة البوت لمجموعتك ورَفّعه مشرفاً للبدء!</b>"
     )
@@ -60,14 +62,16 @@ def send_welcome(message):
 def callback_listener(call):
     if call.data == "show_commands":
         commands_text = (
-            "🛠️ <b>قائمة أوامر حماية وإدارة STAR BOT:</b>\n\n"
+            "🛠️ <b>قائمة أوامر STAR BOT:</b>\n\n"
+            "🎵 <b>أوامر الموسيقى:</b>\n"
+            "• <code>/يوت اسم الأغنية</code> - للبحث عن أغنية وتحميلها بصيغة صوتية.\n\n"
+            "🛡️ <b>أوامر الإدارة والتنظيف:</b>\n"
             "• <code>/mute</code> - لكتم عضو (بالرد على رسالته)\n"
             "• <code>/unmute</code> - لفك كتم عضو (بالرد على رسالته)\n"
             "• <code>/kick</code> - لطرد عضو من المجموعة (بالرد على رسالته)\n"
             "• <code>/ban</code> - لحظر عضو نهائياً (بالرد على رسالته)\n"
             "• <code>/unban</code> - لفك حظر عضو (بالرد على رسالته)\n"
-            "• <code>/pin</code> - لتثبيت الرسالة (بالرد عليها)\n\n"
-            "⚙️ <i>تأكد من إعطاء البوت كافة صلاحيات الإشراف ليتمكن من التنفيذ.</i>"
+            "• <code>/pin</code> - لتثبيت الرسالة (بالرد عليها)"
         )
         bot.answer_callback_query(call.id)
         bot.send_message(call.message.chat.id, commands_text, parse_mode="HTML")
@@ -76,10 +80,83 @@ def callback_listener(call):
         bot.answer_callback_query(call.id, text="المطور: STAR 🌟", show_alert=True)
 
 # ==========================================
-# 2️⃣ أوامر الحماية والإدارة (Moderation)
+# 2️⃣ نظام تحميل الأغاني من يوتيوب (/يوت)
 # ==========================================
 
-# --- أمر الكتم (/mute) ---
+@bot.message_handler(commands=['يوت', 'yt', 'play'])
+def search_and_send_audio(message):
+    # استخراج نص البحث من بعد الأمر
+    args = message.text.split(maxsplit=1)
+    if len(args) < 2:
+        bot.reply_to(message, "⚠️ <b>يرجى كتابة اسم الأغنية بعد الأمر!</b>\nمثال: <code>/يوت عبد الحليم حافظ</code>", parse_mode="HTML")
+        return
+
+    query = args[1]
+    wait_msg = bot.reply_to(message, f"🔍 <b>جاري البحث عن:</b> <i>{query}</i> ...", parse_mode="HTML")
+
+    # إعدادات التنزيل عبر yt-dlp
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': 'song.%(ext)s',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+        'quiet': True,
+        'no_warnings': True,
+        'default_search': 'ytsearch1',
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f"ytsearch1:{query}", download=True)
+            if 'entries' in info and len(info['entries']) > 0:
+                video_info = info['entries'][0]
+            else:
+                video_info = info
+
+            title = video_info.get('title', 'Audio')
+            duration = video_info.get('duration', 0)
+
+        # البحث عن الملف الصوتي الذي تم تنزيله
+        audio_filename = None
+        for file in os.listdir('.'):
+            if file.startswith('song.'):
+                audio_filename = file
+                break
+
+        if audio_filename and os.path.exists(audio_filename):
+            bot.edit_message_text("🚀 <b>جاري رفع الصوت إلى تيليجرام...</b>", chat_id=message.chat.id, message_id=wait_msg.message_id, parse_mode="HTML")
+            
+            with open(audio_filename, 'rb') as audio:
+                bot.send_audio(
+                    chat_id=message.chat.id,
+                    audio=audio,
+                    title=title,
+                    performer="STAR BOT 🎵",
+                    duration=duration,
+                    reply_to_message_id=message.message_id
+                )
+            
+            # حذف الملف المؤقت بعد الإرسال لتوفير المساحة
+            os.remove(audio_filename)
+            bot.delete_message(chat_id=message.chat.id, message_id=wait_msg.message_id)
+        else:
+            bot.edit_message_text("❌ تعذر العثور على الملف الصوتي، حاول مرة أخرى.", chat_id=message.chat.id, message_id=wait_msg.message_id)
+
+    except Exception as e:
+        print(f"Music Error: {e}")
+        bot.edit_message_text(f"❌ حدث خطأ أثناء البحث أو التنزيل.\n<code>{e}</code>", chat_id=message.chat.id, message_id=wait_msg.message_id, parse_mode="HTML")
+        # تنظيف أي ملف معلق في حال حدوث خطأ
+        for file in os.listdir('.'):
+            if file.startswith('song.'):
+                os.remove(file)
+
+# ==========================================
+# 3️⃣ أوامر الحماية والإدارة (Moderation)
+# ==========================================
+
 @bot.message_handler(commands=['mute'])
 def mute_user(message):
     if message.chat.type not in ['group', 'supergroup']:
@@ -112,7 +189,6 @@ def mute_user(message):
     except Exception as e:
         bot.reply_to(message, f"❌ حدث خطأ أثناء الكتم: <code>{e}</code>", parse_mode="HTML")
 
-# --- أمر فك الكتم (/unmute) ---
 @bot.message_handler(commands=['unmute'])
 def unmute_user(message):
     if message.chat.type not in ['group', 'supergroup']:
@@ -141,7 +217,6 @@ def unmute_user(message):
     except Exception as e:
         bot.reply_to(message, f"❌ حدث خطأ أثناء فك الكتم: <code>{e}</code>", parse_mode="HTML")
 
-# --- أمر الطرد (/kick) ---
 @bot.message_handler(commands=['kick'])
 def kick_user(message):
     if message.chat.type not in ['group', 'supergroup']:
@@ -163,14 +238,12 @@ def kick_user(message):
         return
 
     try:
-        # الطرد في تيليجرام يتم عبر الحظر ثم إلغائه فوراً لإتاحة العودة برابط
         bot.ban_chat_member(message.chat.id, target_user.id)
         bot.unban_chat_member(message.chat.id, target_user.id)
         bot.reply_to(message, f"👞 تم طرد العضو <b>{target_user.first_name}</b> من المجموعة.", parse_mode="HTML")
     except Exception as e:
         bot.reply_to(message, f"❌ تعذر طرد العضو: <code>{e}</code>", parse_mode="HTML")
 
-# --- أمر الحظر النهائي (/ban) ---
 @bot.message_handler(commands=['ban'])
 def ban_user(message):
     if message.chat.type not in ['group', 'supergroup']:
@@ -197,7 +270,6 @@ def ban_user(message):
     except Exception as e:
         bot.reply_to(message, f"❌ تعذر حظر العضو: <code>{e}</code>", parse_mode="HTML")
 
-# --- أمر فك الحظر (/unban) ---
 @bot.message_handler(commands=['unban'])
 def unban_user(message):
     if message.chat.type not in ['group', 'supergroup']:
@@ -220,7 +292,6 @@ def unban_user(message):
     except Exception as e:
         bot.reply_to(message, f"❌ تعذر فك الحظر: <code>{e}</code>", parse_mode="HTML")
 
-# --- أمر تثبيت الرسائل (/pin) ---
 @bot.message_handler(commands=['pin'])
 def pin_message(message):
     if message.chat.type not in ['group', 'supergroup']:
@@ -241,15 +312,15 @@ def pin_message(message):
         bot.reply_to(message, f"❌ تعذر تثبيت الرسالة: <code>{e}</code>", parse_mode="HTML")
 
 # ==========================================
-# 3️⃣ الحلقة المباشرة لتشغيل البوت
+# 4️⃣ الحلقة المباشرة لتشغيل البوت
 # ==========================================
 
 if __name__ == '__main__':
-    print("STAR BOT is active and running smoothly...")
+    print("STAR BOT is active with Music & Protection modules...")
     while True:
         try:
             bot.polling(non_stop=True, interval=1, timeout=30, skip_pending=True)
         except Exception as e:
             print(f"Polling error encountered: {e}")
             time.sleep(5)
-                     
+        
