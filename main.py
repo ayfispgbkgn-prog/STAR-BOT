@@ -1,9 +1,35 @@
 import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions
 import time
-from config import TOKEN
+import json
+import os
 
-bot = telebot.TeleBot(TOKEN)
+from config import TOKEN
+from telebot.types import (
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    ChatPermissions
+)
+bot = telebot.TeleBot(TOKEN) # ==========================
+# STAR BOT DATABASE
+# ==========================
+
+DATA_FILE = "data/settings.json"
+
+def load_data():
+    if not os.path.exists(DATA_FILE):
+        return {}
+
+    with open(DATA_FILE, "r", encoding="utf-8") as f:
+        try:
+            return json.load(f)
+        except:
+            return {}
+
+def save_data(data):
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+database = load_data()
 
 try:
     bot.remove_webhook()
