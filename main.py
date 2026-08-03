@@ -3,7 +3,7 @@ from telebot.types import ChatPermissions
 import time
 
 # أدخل التوكن الخاص ببوت الحماية هنا
-TOKEN = "YOUR_BOT_TOKEN_HERE"
+TOKEN = "8647401064:AAGWowezYXit9BI8lAu7M-N4yoTX7dcXlQA"
 bot = telebot.TeleBot(TOKEN)
 
 # دالة التحقق من صلاحية المشرف
