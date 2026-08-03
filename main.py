@@ -175,8 +175,6 @@ def pin_message(message):
 # ==========================================
 # الحلقة المباشرة لتشغيل البوت
 # ==========================================
-
-if __name__ == '__main__':
 # ==========================================
 # أمر مسح الرسائل (للـ المشرفين فقط)
 # ==========================================
@@ -193,14 +191,13 @@ def delete_messages(message):
     # حالة 1: الرد على رسالة معينة لحذفها
     if message.reply_to_message:
         try:
-            # حذف الرسالة المردود عليها + أمر المسح نفسه
             bot.delete_message(message.chat.id, message.reply_to_message.message_id)
             bot.delete_message(message.chat.id, message.message_id)
         except Exception as e:
             bot.reply_to(message, f"❌ تعذر حذف الرسالة: <code>{e}</code>", parse_mode="HTML")
         return
 
-    # حالة 2: كتم/مسح عدد معين من الرسائل (مثال: /del 10)
+    # حالة 2: مسح عدد معين من الرسائل (مثال: /del 10)
     args = message.text.split()
     if len(args) > 1 and args[1].isdigit():
         count = int(args[1])
@@ -210,13 +207,9 @@ def delete_messages(message):
 
         try:
             current_id = message.message_id
-            # جمع معرفات الرسائل المراد حذفها شاملة أمر المسح نفسه
             message_ids = [current_id - i for i in range(count + 1)]
-            
-            # حذف الرسائل دفعة واحدة
             bot.delete_messages(message.chat.id, message_ids)
             
-            # إرسال تأكيد ثم حذفه تلقائياً بعد 3 ثوانٍ
             confirm = bot.send_message(message.chat.id, f"🧹 <b>تم حذف {count} رسالة بنجاح!</b>", parse_mode="HTML")
             time.sleep(3)
             bot.delete_message(message.chat.id, confirm.message_id)
@@ -224,7 +217,11 @@ def delete_messages(message):
             bot.reply_to(message, f"❌ تعذر مسح الرسائل (قد تكون قديمة جداً): <code>{e}</code>", parse_mode="HTML")
     else:
         bot.reply_to(message, "⚠️ <b>كيفية الاستخدام:</b>\n1️⃣ قم بالرد على الرسالة المراد حذفها بأمر <code>/del</code>\n2️⃣ أو اكتب الأمر مع العدد: <code>/del 10</code>", parse_mode="HTML")
-        
+
+# ==========================================
+# سطر التشغيل الأساسي (يكون آخر شيء في نهاية الملف)
+# ==========================================
+if __name__ == '__main__':
     print("STAR BOT is active with Protection module...")
     while True:
         try:
@@ -233,3 +230,4 @@ def delete_messages(message):
             print(f"Polling error encountered: {e}")
             time.sleep(5)
             
+     
