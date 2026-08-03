@@ -1,129 +1,255 @@
 import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-import yt_dlp
-import os
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions
 import time
 from config import TOKEN
 
+# إنشاء كائن البوت
 bot = telebot.TeleBot(TOKEN)
 
-# تنظيف الـ Webhook
+# تنظيف الـ Webhook عند بدء التشغيل لمنع التعارض مع Render
 try:
     bot.remove_webhook()
-    print("STAR MUSIC BOT is starting...")
+    print("STAR BOT: Webhook cleaned successfully.")
 except Exception as e:
-    print(f"Webhook Clean Warning: {e}")
+    print(f"STAR BOT: Webhook warning: {e}")
 
-# --- الواجهة الترحيبية ---
+# دالة التحقق من صلاحيات المشرفين
+def is_admin(chat_id, user_id):
+    try:
+        member = bot.get_chat_member(chat_id, user_id)
+        return member.status in ['administrator', 'creator']
+    except Exception:
+        return False
+
+# ==========================================
+# 1️⃣ الواجهة الترحيبية والأزرار الشفافة
+# ==========================================
+
 @bot.message_handler(commands=['start'])
-def start_cmd(message):
+def send_welcome(message):
     user_name = message.from_user.first_name
     caption = (
-        f"🎧 <b>أهلاً بك يا {user_name} في STAR MUSIC!</b>\n\n"
-        f"🎵 <b>أسرع بوت للبحث وتحميل الأغاني والصوتيات بجودة عالية.</b>\n"
+        f"⚡ <b>أهلاً بك يا {user_name} في بوت STAR!</b>\n\n"
+        f"🛡️ <b>STAR BOT</b> هو النظام الأقوى لإدارة وحماية المجموعات وتصميم الخدمات.\n"
         f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"💡 <b>طريقة الاستخدام:</b>\n"
-        f"أرسل اسم الأغنية مباشرة أو استخدم الأمر:\n"
-        f"<code>/play اسم الأغنية</code>\n"
-        f"مثال: <code>فيروز كيفك انت</code>\n"
+        f"⚙️ <b>المميزات المتاحة حالياً:</b>\n"
+        f"└ 🚷 <b>أوامر الكتم والحظر والإبعاد</b>\n"
+        f"└ 📌 <b>تثبيت الرسائل وإدارتها</b>\n"
+        f"└ 🎵 <b>نظام البحث الصوتي الموسيقي (قريباً)</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👇 <b>أرسل اسم الأغنية الآن للبدء!</b>"
+        f"👇 <b>قم بإضافة البوت لمجموعتك ورَفّعه مشرفاً للبدء!</b>"
     )
-    
-    markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("👑 المطور", callback_data="dev_info"))
-    
+
+    markup = InlineKeyboardMarkup(row_width=2)
+    try:
+        bot_info = bot.get_me()
+        add_to_group_url = f"https://t.me/{bot_info.username}?startgroup=true"
+    except Exception:
+        add_to_group_url = "https://t.me/"
+
+    btn_add = InlineKeyboardButton("➕ أضف البوت لمجموعتك", url=add_to_group_url)
+    btn_commands = InlineKeyboardButton("📜 قائمة الأوامر", callback_data="show_commands")
+    btn_developer = InlineKeyboardButton("👑 المطور", callback_data="show_dev")
+
+    markup.add(btn_add)
+    markup.add(btn_commands, btn_developer)
+
     bot.reply_to(message, caption, parse_mode="HTML", reply_markup=markup)
 
-@bot.callback_query_handler(func=lambda call: call.data == "dev_info")
-def dev_callback(call):
-    bot.answer_callback_query(call.id, text="تطوير: STAR 🌟", show_alert=True)
+@bot.callback_query_handler(func=lambda call: True)
+def callback_listener(call):
+    if call.data == "show_commands":
+        commands_text = (
+            "🛠️ <b>قائمة أوامر حماية وإدارة STAR BOT:</b>\n\n"
+            "• <code>/mute</code> - لكتم عضو (بالرد على رسالته)\n"
+            "• <code>/unmute</code> - لفك كتم عضو (بالرد على رسالته)\n"
+            "• <code>/kick</code> - لطرد عضو من المجموعة (بالرد على رسالته)\n"
+            "• <code>/ban</code> - لحظر عضو نهائياً (بالرد على رسالته)\n"
+            "• <code>/unban</code> - لفك حظر عضو (بالرد على رسالته)\n"
+            "• <code>/pin</code> - لتثبيت الرسالة (بالرد عليها)\n\n"
+            "⚙️ <i>تأكد من إعطاء البوت كافة صلاحيات الإشراف ليتمكن من التنفيذ.</i>"
+        )
+        bot.answer_callback_query(call.id)
+        bot.send_message(call.message.chat.id, commands_text, parse_mode="HTML")
 
-# --- دالة البحث والتنزيل السريعة ---
-def download_and_send(chat_id, message_id, query):
-    wait_msg = bot.send_message(chat_id, f"🔍 <b>جاري البحث عن:</b> <i>{query}</i> ...", parse_mode="HTML", reply_to_message_id=message_id)
+    elif call.data == "show_dev":
+        bot.answer_callback_query(call.id, text="المطور: STAR 🌟", show_alert=True)
 
-    # إعدادات تنزيل محسّنة للسرعة والجودة
-    ydl_opts = {
-        'format': 'ba/ba*',
-        'outtmpl': 'downloads/%(id)s.%(ext)s',
-        'quiet': True,
-        'no_warnings': True,
-        'default_search': 'ytsearch1',
-        'nocheckcertificate': True,
-        'geo_bypass': True,
-    }
+# ==========================================
+# 2️⃣ أوامر الحماية والإدارة (Moderation)
+# ==========================================
+
+# --- أمر الكتم (/mute) ---
+@bot.message_handler(commands=['mute'])
+def mute_user(message):
+    if message.chat.type not in ['group', 'supergroup']:
+        bot.reply_to(message, "⚠️ هذا الأمر يعمل داخل المجموعات فقط!")
+        return
+
+    if not is_admin(message.chat.id, message.from_user.id):
+        bot.reply_to(message, "❌ هذا الأمر مخصص للمشرفين فقط!")
+        return
+
+    if not message.reply_to_message:
+        bot.reply_to(message, "⚠️ قم بالرد على رسالة العضو الذي تريد كتمه.")
+        return
+
+    target_user = message.reply_to_message.from_user
+
+    if is_admin(message.chat.id, target_user.id):
+        bot.reply_to(message, "⚠️ لا يمكنك كتم مشرف أو مالك المجموعة!")
+        return
 
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # تجربة يوتيوب ثم SoundCloud كبديل تلقائي
-            try:
-                info = ydl.extract_info(f"ytsearch1:{query}", download=True)
-            except Exception:
-                info = ydl.extract_info(f"scsearch1:{query}", download=True)
-
-            if 'entries' in info and len(info['entries']) > 0:
-                video_info = info['entries'][0]
-            else:
-                video_info = info
-
-            title = video_info.get('title', 'Audio Track')
-            duration = video_info.get('duration', 0)
-            file_id = video_info.get('id')
-            ext = video_info.get('ext', 'm4a')
-            filepath = f"downloads/{file_id}.{ext}"
-
-        if os.path.exists(filepath):
-            bot.edit_message_text("🚀 <b>جاري رفع الملف الصوتي...</b>", chat_id=chat_id, message_id=wait_msg.message_id, parse_mode="HTML")
-            
-            with open(filepath, 'rb') as audio:
-                bot.send_audio(
-                    chat_id=chat_id,
-                    audio=audio,
-                    title=title,
-                    performer="STAR MUSIC 🎵",
-                    duration=duration,
-                    reply_to_message_id=message_id
-                )
-            
-            # تنظيف الملف فوراً
-            os.remove(filepath)
-            bot.delete_message(chat_id=chat_id, message_id=wait_msg.message_id)
-        else:
-            bot.edit_message_text("❌ تعذر العثور على مقطع مطابق، جرب كتابة اسم المطرب مع الأغنية.", chat_id=chat_id, message_id=wait_msg.message_id)
-
+        no_send_permissions = ChatPermissions(
+            can_send_messages=False,
+            can_send_media_messages=False,
+            can_send_other_messages=False,
+            can_add_web_page_previews=False
+        )
+        bot.restrict_chat_member(message.chat.id, target_user.id, permissions=no_send_permissions)
+        bot.reply_to(message, f"🚫 تم كتم العضو <b>{target_user.first_name}</b> بنجاح.", parse_mode="HTML")
     except Exception as e:
-        print(f"Music Error: {e}")
-        bot.edit_message_text("❌ <b>حدث خطأ أثناء التنزيل.</b>\nتأكد من كتابة اسم الأغنية بشكل صحيح.", chat_id=chat_id, message_id=wait_msg.message_id, parse_mode="HTML")
-        
-        # تنظيف مجلد التنزيلات عند الأخطاء
-        if os.path.exists('downloads'):
-            for f in os.listdir('downloads'):
-                os.remove(os.path.join('downloads', f))
+        bot.reply_to(message, f"❌ حدث خطأ أثناء الكتم: <code>{e}</code>", parse_mode="HTML")
 
-# --- الاستجابة للأوامر والرسائل المباشرة ---
-@bot.message_handler(commands=['play', 'song', 'يوت'])
-def handle_play_cmd(message):
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        bot.reply_to(message, "⚠️ <b>يرجى كتابة اسم الأغنية!</b>\nمثال: <code>/play فيروز</code>", parse_mode="HTML")
+# --- أمر فك الكتم (/unmute) ---
+@bot.message_handler(commands=['unmute'])
+def unmute_user(message):
+    if message.chat.type not in ['group', 'supergroup']:
+        bot.reply_to(message, "⚠️ هذا الأمر يعمل داخل المجموعات فقط!")
         return
-    download_and_send(message.chat.id, message.message_id, args[1])
 
-# البحث المباشر بدون الحاجة لأمر (فقط كتابة الاسم)
-@bot.message_handler(func=lambda m: m.content_type == 'text' and not m.text.startswith('/'))
-def handle_direct_search(message):
-    download_and_send(message.chat.id, message.message_id, message.text)
+    if not is_admin(message.chat.id, message.from_user.id):
+        bot.reply_to(message, "❌ هذا الأمر مخصص للمشرفين فقط!")
+        return
 
-# --- تشغيل البوت ---
+    if not message.reply_to_message:
+        bot.reply_to(message, "⚠️ قم بالرد على رسالة العضو المراد فك كتمه.")
+        return
+
+    target_user = message.reply_to_message.from_user
+
+    try:
+        full_permissions = ChatPermissions(
+            can_send_messages=True,
+            can_send_media_messages=True,
+            can_send_other_messages=True,
+            can_add_web_page_previews=True
+        )
+        bot.restrict_chat_member(message.chat.id, target_user.id, permissions=full_permissions)
+        bot.reply_to(message, f"🔊 تم فك الكتم عن العضو <b>{target_user.first_name}</b> بنجاح.", parse_mode="HTML")
+    except Exception as e:
+        bot.reply_to(message, f"❌ حدث خطأ أثناء فك الكتم: <code>{e}</code>", parse_mode="HTML")
+
+# --- أمر الطرد (/kick) ---
+@bot.message_handler(commands=['kick'])
+def kick_user(message):
+    if message.chat.type not in ['group', 'supergroup']:
+        bot.reply_to(message, "⚠️ هذا الأمر يعمل داخل المجموعات فقط!")
+        return
+
+    if not is_admin(message.chat.id, message.from_user.id):
+        bot.reply_to(message, "❌ هذا الأمر مخصص للمشرفين فقط!")
+        return
+
+    if not message.reply_to_message:
+        bot.reply_to(message, "⚠️ قم بالرد على رسالة العضو الذي تريد طرده.")
+        return
+
+    target_user = message.reply_to_message.from_user
+
+    if is_admin(message.chat.id, target_user.id):
+        bot.reply_to(message, "⚠️ لا يمكنك طرد مشرف أو مالك المجموعة!")
+        return
+
+    try:
+        # الطرد في تيليجرام يتم عبر الحظر ثم إلغائه فوراً لإتاحة العودة برابط
+        bot.ban_chat_member(message.chat.id, target_user.id)
+        bot.unban_chat_member(message.chat.id, target_user.id)
+        bot.reply_to(message, f"👞 تم طرد العضو <b>{target_user.first_name}</b> من المجموعة.", parse_mode="HTML")
+    except Exception as e:
+        bot.reply_to(message, f"❌ تعذر طرد العضو: <code>{e}</code>", parse_mode="HTML")
+
+# --- أمر الحظر النهائي (/ban) ---
+@bot.message_handler(commands=['ban'])
+def ban_user(message):
+    if message.chat.type not in ['group', 'supergroup']:
+        bot.reply_to(message, "⚠️ هذا الأمر يعمل داخل المجموعات فقط!")
+        return
+
+    if not is_admin(message.chat.id, message.from_user.id):
+        bot.reply_to(message, "❌ هذا الأمر مخصص للمشرفين فقط!")
+        return
+
+    if not message.reply_to_message:
+        bot.reply_to(message, "⚠️ قم بالرد على رسالة العضو الذي تريد حظره.")
+        return
+
+    target_user = message.reply_to_message.from_user
+
+    if is_admin(message.chat.id, target_user.id):
+        bot.reply_to(message, "⚠️ لا يمكنك حظر مشرف أو مالك المجموعة!")
+        return
+
+    try:
+        bot.ban_chat_member(message.chat.id, target_user.id)
+        bot.reply_to(message, f"🚷 تم حظر العضو <b>{target_user.first_name}</b> نهائياً من المجموعة.", parse_mode="HTML")
+    except Exception as e:
+        bot.reply_to(message, f"❌ تعذر حظر العضو: <code>{e}</code>", parse_mode="HTML")
+
+# --- أمر فك الحظر (/unban) ---
+@bot.message_handler(commands=['unban'])
+def unban_user(message):
+    if message.chat.type not in ['group', 'supergroup']:
+        bot.reply_to(message, "⚠️ هذا الأمر يعمل داخل المجموعات فقط!")
+        return
+
+    if not is_admin(message.chat.id, message.from_user.id):
+        bot.reply_to(message, "❌ هذا الأمر مخصص للمشرفين فقط!")
+        return
+
+    if not message.reply_to_message:
+        bot.reply_to(message, "⚠️ قم بالرد على رسالة العضو المراد فك حظره.")
+        return
+
+    target_user = message.reply_to_message.from_user
+
+    try:
+        bot.unban_chat_member(message.chat.id, target_user.id)
+        bot.reply_to(message, f"✅ تم فك الحظر عن <b>{target_user.first_name}</b>. يمكنه الانضمام الآن.", parse_mode="HTML")
+    except Exception as e:
+        bot.reply_to(message, f"❌ تعذر فك الحظر: <code>{e}</code>", parse_mode="HTML")
+
+# --- أمر تثبيت الرسائل (/pin) ---
+@bot.message_handler(commands=['pin'])
+def pin_message(message):
+    if message.chat.type not in ['group', 'supergroup']:
+        return
+
+    if not is_admin(message.chat.id, message.from_user.id):
+        bot.reply_to(message, "❌ هذا الأمر مخصص للمشرفين فقط!")
+        return
+
+    if not message.reply_to_message:
+        bot.reply_to(message, "⚠️ قم بالرد على الرسالة التي تريد تثبيتها.")
+        return
+
+    try:
+        bot.pin_chat_message(message.chat.id, message.reply_to_message.message_id)
+        bot.reply_to(message, "📌 تم تثبيت الرسالة بنجاح!")
+    except Exception as e:
+        bot.reply_to(message, f"❌ تعذر تثبيت الرسالة: <code>{e}</code>", parse_mode="HTML")
+
+# ==========================================
+# 3️⃣ الحلقة المباشرة لتشغيل البوت
+# ==========================================
+
 if __name__ == '__main__':
-    if not os.path.exists('downloads'):
-        os.makedirs('downloads')
-        
-    print("STAR MUSIC BOT is Live!")
+    print("STAR BOT is active and running smoothly...")
     while True:
         try:
             bot.polling(non_stop=True, interval=1, timeout=30, skip_pending=True)
         except Exception as e:
+            print(f"Polling error encountered: {e}")
             time.sleep(5)
             
