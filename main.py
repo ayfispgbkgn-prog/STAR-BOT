@@ -1,8 +1,31 @@
+import os
+import time
+from threading import Thread
+from flask import Flask
 import telebot
 from telebot.types import ChatPermissions
-import time
 
-# أدخل التوكن الخاص ببوت الحماية هنا
+# ==========================================
+# سيرفر وهمي لإرضاء Render وإبقاء البوت شغال 24/7
+# ==========================================
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "STAR BOT is Alive and Running!"
+
+def run_flask():
+    # قراءة البورت الديناميكي من سيرفر Render لمنع خطأ Port scan timeout
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    t = Thread(target=run_flask)
+    t.start()
+
+# ==========================================
+# إعدادات البوت والتوكن
+# ==========================================
 TOKEN = "8647401064:AAGWowezYXit9BI8lAu7M-N4yoTX7dcXlQA"
 bot = telebot.TeleBot(TOKEN)
 
@@ -216,9 +239,12 @@ def delete_messages(message):
         bot.reply_to(message, "⚠️ <b>كيفية الاستخدام:</b>\n1️⃣ قم بالرد على الرسالة المراد حذفها بأمر <code>/del</code>\n2️⃣ أو اكتب الأمر مع العدد: <code>/del 10</code>", parse_mode="HTML")
 
 # ==========================================
-# سطر التشغيل الأساسي (يكون آخر شيء في نهاية الملف)
+# سطر التشغيل الأساسي
 # ==========================================
 if __name__ == '__main__':
+    # تشغيل سيرفر الويب بالخلفية لإبقاء Render سعيداً
+    keep_alive()
+    
     print("STAR BOT is active with Protection module...")
     while True:
         try:
@@ -226,4 +252,4 @@ if __name__ == '__main__':
         except Exception as e:
             print(f"Polling error encountered: {e}")
             time.sleep(5)
-        
+                    
