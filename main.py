@@ -173,9 +173,6 @@ def pin_message(message):
         bot.reply_to(message, f"❌ تعذر تثبيت الرسالة: <code>{e}</code>", parse_mode="HTML")
 
 # ==========================================
-# الحلقة المباشرة لتشغيل البوت
-# ==========================================
-# ==========================================
 # أمر مسح الرسائل (للـ المشرفين فقط)
 # ==========================================
 @bot.message_handler(commands=['del', 'clear', 'مسح'])
@@ -229,3 +226,4 @@ if __name__ == '__main__':
         except Exception as e:
             print(f"Polling error encountered: {e}")
             time.sleep(5)
+        
