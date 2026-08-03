@@ -177,6 +177,54 @@ def pin_message(message):
 # ==========================================
 
 if __name__ == '__main__':
+# ==========================================
+# أمر مسح الرسائل (للـ المشرفين فقط)
+# ==========================================
+@bot.message_handler(commands=['del', 'clear', 'مسح'])
+def delete_messages(message):
+    if message.chat.type not in ['group', 'supergroup']:
+        bot.reply_to(message, "⚠️ هذا الأمر يعمل داخل المجموعات فقط!")
+        return
+
+    if not is_admin(message.chat.id, message.from_user.id):
+        bot.reply_to(message, "❌ هذا الأمر مخصص للمشرفين فقط!")
+        return
+
+    # حالة 1: الرد على رسالة معينة لحذفها
+    if message.reply_to_message:
+        try:
+            # حذف الرسالة المردود عليها + أمر المسح نفسه
+            bot.delete_message(message.chat.id, message.reply_to_message.message_id)
+            bot.delete_message(message.chat.id, message.message_id)
+        except Exception as e:
+            bot.reply_to(message, f"❌ تعذر حذف الرسالة: <code>{e}</code>", parse_mode="HTML")
+        return
+
+    # حالة 2: كتم/مسح عدد معين من الرسائل (مثال: /del 10)
+    args = message.text.split()
+    if len(args) > 1 and args[1].isdigit():
+        count = int(args[1])
+        if count > 100:
+            bot.reply_to(message, "⚠️ لا يمكنك حذف أكثر من 100 رسالة دفعة واحدة!")
+            return
+
+        try:
+            current_id = message.message_id
+            # جمع معرفات الرسائل المراد حذفها شاملة أمر المسح نفسه
+            message_ids = [current_id - i for i in range(count + 1)]
+            
+            # حذف الرسائل دفعة واحدة
+            bot.delete_messages(message.chat.id, message_ids)
+            
+            # إرسال تأكيد ثم حذفه تلقائياً بعد 3 ثوانٍ
+            confirm = bot.send_message(message.chat.id, f"🧹 <b>تم حذف {count} رسالة بنجاح!</b>", parse_mode="HTML")
+            time.sleep(3)
+            bot.delete_message(message.chat.id, confirm.message_id)
+        except Exception as e:
+            bot.reply_to(message, f"❌ تعذر مسح الرسائل (قد تكون قديمة جداً): <code>{e}</code>", parse_mode="HTML")
+    else:
+        bot.reply_to(message, "⚠️ <b>كيفية الاستخدام:</b>\n1️⃣ قم بالرد على الرسالة المراد حذفها بأمر <code>/del</code>\n2️⃣ أو اكتب الأمر مع العدد: <code>/del 10</code>", parse_mode="HTML")
+        
     print("STAR BOT is active with Protection module...")
     while True:
         try:
